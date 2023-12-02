@@ -3,6 +3,8 @@ use std::io::{self, BufRead};
 use std::path::Path;
 use std::collections::HashMap;
 use std::char::from_digit;
+use std::cmp;
+
 
 
 struct Round {
@@ -80,16 +82,34 @@ fn part_1() {
 
 
 fn part_2() {
+    // 12 red cubes, 13 green cubes, and 14 blue
+    let mut result: u64 = 0;
+
     if let Ok(lines) = read_lines("./input.txt") {
         for line in lines {
             if let Ok(row) = line {
+                let game = parse_row(row);
+                let mut min_cubes = Round {
+                    red: 0,
+                    green: 0,
+                    blue: 0,
+                };
 
+                for round in game.rounds.iter() {
+                    min_cubes.red = cmp::max(round.red, min_cubes.red);
+                    min_cubes.green = cmp::max(round.green, min_cubes.green);
+                    min_cubes.blue = cmp::max(round.blue, min_cubes.blue);
+                }
+
+                result += min_cubes.red as u64 * min_cubes.green as u64 * min_cubes.blue as u64;
             }
         }
     }
+
+    println!("{}", result);
 }
 
 fn main() {
     part_1();
-    // part_2();
+    part_2();
 }
