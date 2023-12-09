@@ -15,7 +15,7 @@ where P: AsRef<Path>, {
 fn card_to_number(card: char) -> u8 {
     match card {
         'T' => 10,
-        'J' => 11,
+        'J' => 1,
         'Q' => 12,
         'K' => 13,
         'A' => 14,
@@ -50,11 +50,31 @@ fn compare(a: &Hand, b: &Hand) -> Ordering {
         return Ordering::Equal;
     }
 
-    let a_count = count_element_function(a.cards.iter());
-    let b_count = count_element_function(b.cards.iter());
+    let mut a_count = count_element_function(a.cards.iter());
+    let a_joker_count = a_count.remove(&1).unwrap_or(0);
 
-    let a_count_max = *a_count.values().max().unwrap();
-    let b_count_max = *b_count.values().max().unwrap();
+    let mut b_count = count_element_function(b.cards.iter());
+    let b_joker_count = b_count.remove(&1).unwrap_or(0);
+
+    let mut a_count_max = *a_count.values().max().unwrap_or(&0);
+    let mut b_count_max = *b_count.values().max().unwrap_or(&0);
+
+    for (card, count) in a_count.iter_mut() {
+        if *count == a_count_max {
+            *count += a_joker_count;
+            break
+        }
+    }
+
+    for (card, count) in b_count.iter_mut() {
+        if *count == b_count_max {
+            *count += b_joker_count;
+            break
+        }
+    }
+
+    a_count_max += a_joker_count;
+    b_count_max += b_joker_count;
 
     // One is definitely bigger than the other
     if a_count_max > b_count_max {
@@ -109,26 +129,38 @@ fn compare(a: &Hand, b: &Hand) -> Ordering {
 }
 
 fn get_combo_strength(cards: &Vec<u8>) -> u8 {
-    let count = count_element_function(cards.iter());
-    let count_max = *count.values().max().unwrap();
+    let mut count = count_element_function(cards.iter());
+    let joker_count = count.remove(&1).unwrap_or(0);
+
+    let count_max = *count.values().max().unwrap_or(&0);
 
     // Five of a kind
-    if count_max == 5 {
+    if count_max + joker_count == 5 {
         return 10;
     }
 
     // Four of a kind
-    if count_max == 4 {
+    if count_max + joker_count == 4 {
         return 9;
     }
 
     // Full house
-    if count_max == 3 && count.len() == 2 {
+    if count_max == 3 {
+        if joker_count == 0 && count.len() == 2 {
+            return 8;
+        }
+    }
+
+    let mut count_sorted: Vec<usize> = count.values().map(|x| *x).collect::<Vec<usize>>();
+    count_sorted.sort();
+    count_sorted.reverse();
+    // Full house with joker
+    if count_sorted[0] == 2 && count_sorted[1] == 2 && joker_count == 1 {
         return 8;
     }
 
     // Three of a kind
-    if count_max == 3 {
+    if count_max + joker_count == 3 {
         return 5;
     }
 
@@ -138,13 +170,14 @@ fn get_combo_strength(cards: &Vec<u8>) -> u8 {
     }
 
     // Pair
-    if count_max == 2 {
+    if count_max + joker_count == 2 {
         return 3;
     }
 
     // High card
     return 2;
 }
+
 
 fn lame_compare(a: &Hand, b: &Hand) -> Ordering {
     if get_combo_strength(&a.cards) > get_combo_strength(&b.cards) {
@@ -207,59 +240,59 @@ fn part_1() {
 
 
 fn test_compare() {
-    // // Five of a kind vs Five of a kind
-    // let a = Hand { cards: vec![2, 2, 2, 2, 2], bid: 1 };
-    // let b = Hand { cards: vec![3, 3, 3, 3, 3], bid: 1 };
-    // assert_eq!(compare(&a, &b), Ordering::Less);
-    // assert_eq!(compare(&b, &a), Ordering::Greater);
-    //
-    // // Five of a kind vs Four of a kind
-    // let a = Hand { cards: vec![2, 2, 2, 2, 2], bid: 1 };
-    // let b = Hand { cards: vec![3, 3, 3, 3, 4], bid: 1 };
-    // assert_eq!(compare(&a, &b), Ordering::Greater);
-    // assert_eq!(compare(&b, &a), Ordering::Less);
-    //
-    // // Five of a kind vs Full house
-    // let a = Hand { cards: vec![2, 2, 2, 2, 2], bid: 1 };
-    // let b = Hand { cards: vec![3, 3, 3, 4, 4], bid: 1 };
-    // assert_eq!(compare(&a, &b), Ordering::Greater);
-    // assert_eq!(compare(&b, &a), Ordering::Less);
-    //
-    // // Full house vs Full house
-    // let a = Hand { cards: vec![2, 2, 2, 3, 3], bid: 1 };
-    // let b = Hand { cards: vec![3, 3, 3, 4, 4], bid: 1 };
-    // assert_eq!(compare(&a, &b), Ordering::Less);
-    // assert_eq!(compare(&b, &a), Ordering::Greater);
-    //
-    // // Full house vs Full house
-    // let a = Hand { cards: vec![2, 2, 2, 3, 3], bid: 1 };
-    // let b = Hand { cards: vec![2, 2, 3, 3, 3], bid: 1 };
-    // assert_eq!(compare(&a, &b), Ordering::Less);
-    // assert_eq!(compare(&b, &a), Ordering::Greater);
-    //
-    // // Full house vs Full house
-    // let a = Hand { cards: vec![3, 3, 2, 2, 3], bid: 1 };
-    // let b = Hand { cards: vec![3, 3, 2, 3, 2], bid: 1 };
-    // assert_eq!(compare(&a, &b), Ordering::Less);
-    // assert_eq!(compare(&b, &a), Ordering::Greater);
-    //
-    // // Full house vs Full house
-    // let a = Hand { cards: vec![2, 2, 2, 3, 3], bid: 1 };
-    // let b = Hand { cards: vec![1, 1, 1, 5, 5], bid: 1 };
-    // assert_eq!(compare(&a, &b), Ordering::Greater);
-    // assert_eq!(compare(&b, &a), Ordering::Less);
-    //
-    // // Full house vs Two pairs
-    // let a = Hand { cards: vec![2, 2, 2, 3, 3], bid: 1 };
-    // let b = Hand { cards: vec![1, 1, 5, 5, 6], bid: 1 };
-    // assert_eq!(compare(&a, &b), Ordering::Greater);
-    // assert_eq!(compare(&b, &a), Ordering::Less);
-    //
-    // // Full house vs Three of a kind
-    // let a = Hand { cards: vec![2, 2, 2, 3, 3], bid: 1 };
-    // let b = Hand { cards: vec![1, 1, 1, 5, 6], bid: 1 };
-    // assert_eq!(compare(&a, &b), Ordering::Greater);
-    // assert_eq!(compare(&b, &a), Ordering::Less);
+    // Five of a kind vs Five of a kind
+    let a = Hand { cards: vec![2, 2, 2, 2, 2], bid: 1 };
+    let b = Hand { cards: vec![3, 3, 3, 3, 3], bid: 1 };
+    assert_eq!(compare(&a, &b), Ordering::Less);
+    assert_eq!(compare(&b, &a), Ordering::Greater);
+
+    // Five of a kind vs Four of a kind
+    let a = Hand { cards: vec![2, 2, 2, 2, 2], bid: 1 };
+    let b = Hand { cards: vec![3, 3, 3, 3, 4], bid: 1 };
+    assert_eq!(compare(&a, &b), Ordering::Greater);
+    assert_eq!(compare(&b, &a), Ordering::Less);
+
+    // Five of a kind vs Full house
+    let a = Hand { cards: vec![2, 2, 2, 2, 2], bid: 1 };
+    let b = Hand { cards: vec![3, 3, 3, 4, 4], bid: 1 };
+    assert_eq!(compare(&a, &b), Ordering::Greater);
+    assert_eq!(compare(&b, &a), Ordering::Less);
+
+    // Full house vs Full house
+    let a = Hand { cards: vec![2, 2, 2, 3, 3], bid: 1 };
+    let b = Hand { cards: vec![3, 3, 3, 4, 4], bid: 1 };
+    assert_eq!(compare(&a, &b), Ordering::Less);
+    assert_eq!(compare(&b, &a), Ordering::Greater);
+
+    // Full house vs Full house
+    let a = Hand { cards: vec![2, 2, 2, 3, 3], bid: 1 };
+    let b = Hand { cards: vec![2, 2, 3, 3, 3], bid: 1 };
+    assert_eq!(compare(&a, &b), Ordering::Less);
+    assert_eq!(compare(&b, &a), Ordering::Greater);
+
+    // Full house vs Full house
+    let a = Hand { cards: vec![3, 3, 2, 2, 3], bid: 1 };
+    let b = Hand { cards: vec![3, 3, 2, 3, 2], bid: 1 };
+    assert_eq!(compare(&a, &b), Ordering::Less);
+    assert_eq!(compare(&b, &a), Ordering::Greater);
+
+    // Full house vs Five of a kind
+    let a = Hand { cards: vec![2, 2, 2, 3, 3], bid: 1 };
+    let b = Hand { cards: vec![1, 1, 1, 5, 5], bid: 1 };
+    assert_eq!(compare(&a, &b), Ordering::Less);
+    assert_eq!(compare(&b, &a), Ordering::Greater);
+
+    // Full house vs Four of a kind
+    let a = Hand { cards: vec![2, 2, 2, 3, 3], bid: 1 };
+    let b = Hand { cards: vec![1, 1, 5, 5, 6], bid: 1 };
+    assert_eq!(compare(&a, &b), Ordering::Less);
+    assert_eq!(compare(&b, &a), Ordering::Greater);
+
+    // Full house vs Four of a kind
+    let a = Hand { cards: vec![2, 2, 2, 3, 3], bid: 1 };
+    let b = Hand { cards: vec![1, 1, 1, 5, 6], bid: 1 };
+    assert_eq!(compare(&a, &b), Ordering::Less);
+    assert_eq!(compare(&b, &a), Ordering::Greater);
 
     // A hand = [2, 2, 3, 3, 3], B hand = [13, 4, 3, 3, 3]
     // Full house vs Three of a kind
@@ -280,17 +313,17 @@ fn test_compare() {
     assert_eq!(compare(&a, &b), Ordering::Less);
     assert_eq!(compare(&b, &a), Ordering::Greater);
 
-    // Two pairs vs Pair
+    // Two pairs vs Three of a kind
     let a = Hand { cards: vec![2, 2, 3, 3, 4], bid: 1 };
     let b = Hand { cards: vec![1, 1, 5, 6, 7], bid: 1 };
-    assert_eq!(compare(&a, &b), Ordering::Greater);
-    assert_eq!(compare(&b, &a), Ordering::Less);
+    assert_eq!(compare(&a, &b), Ordering::Less);
+    assert_eq!(compare(&b, &a), Ordering::Greater);
 
-    // Pair vs Pair
+    // Pair vs Three of a kind
     let a = Hand { cards: vec![2, 2, 3, 4, 5], bid: 1 };
     let b = Hand { cards: vec![1, 1, 3, 4, 5], bid: 1 };
-    assert_eq!(compare(&a, &b), Ordering::Greater);
-    assert_eq!(compare(&b, &a), Ordering::Less);
+    assert_eq!(compare(&a, &b), Ordering::Less);
+    assert_eq!(compare(&b, &a), Ordering::Greater);
 
     // Pair vs Pair - kicker
     let a = Hand { cards: vec![2, 2, 3, 4, 5], bid: 1 };
@@ -316,11 +349,87 @@ fn test_compare() {
     assert_eq!(compare(&a, &b), Ordering::Less);
     assert_eq!(compare(&b, &a), Ordering::Greater);
 
-    // Full house vs Two pairs
+    // Full house vs Four of a kind
     let a = Hand { cards: vec![2, 2, 2, 3, 3], bid: 1 };
     let b = Hand { cards: vec![1, 1, 5, 5, 6], bid: 1 };
+    assert_eq!(compare(&a, &b), Ordering::Less);
+    assert_eq!(compare(&b, &a), Ordering::Greater);
+
+    // Five of a kind vs Five of a kind
+    let a = Hand { cards: vec![2, 2, 2, 2, 2], bid: 1 };
+    let b = Hand { cards: vec![1, 1, 1, 1, 1], bid: 1 };
     assert_eq!(compare(&a, &b), Ordering::Greater);
     assert_eq!(compare(&b, &a), Ordering::Less);
+
+    // Five of a kind vs Five of a kind
+    let a = Hand { cards: vec![2, 2, 2, 2, 2], bid: 1 };
+    let b = Hand { cards: vec![1, 2, 1, 1, 1], bid: 1 };
+    assert_eq!(compare(&a, &b), Ordering::Greater);
+    assert_eq!(compare(&b, &a), Ordering::Less);
+
+    // Five of a kind vs Five of a kind
+    let a = Hand { cards: vec![2, 2, 2, 2, 2], bid: 1 };
+    let b = Hand { cards: vec![1, 2, 2, 1, 1], bid: 1 };
+    assert_eq!(compare(&a, &b), Ordering::Greater);
+    assert_eq!(compare(&b, &a), Ordering::Less);
+
+    // Five of a kind vs Five of a kind
+    let a = Hand { cards: vec![2, 2, 2, 2, 2], bid: 1 };
+    let b = Hand { cards: vec![1, 2, 2, 2, 1], bid: 1 };
+    assert_eq!(compare(&a, &b), Ordering::Greater);
+    assert_eq!(compare(&b, &a), Ordering::Less);
+
+    // Five of a kind vs Five of a kind
+    let a = Hand { cards: vec![2, 2, 2, 2, 2], bid: 1 };
+    let b = Hand { cards: vec![1, 2, 2, 2, 2], bid: 1 };
+    assert_eq!(compare(&a, &b), Ordering::Greater);
+    assert_eq!(compare(&b, &a), Ordering::Less);
+
+    // Five of a kind vs Five of a kind
+    let a = Hand { cards: vec![2, 2, 2, 2, 2], bid: 1 };
+    let b = Hand { cards: vec![1, 1, 2, 2, 2], bid: 1 };
+    assert_eq!(compare(&a, &b), Ordering::Greater);
+    assert_eq!(compare(&b, &a), Ordering::Less);
+
+    // Five of a kind vs Five of a kind
+    let a = Hand { cards: vec![2, 2, 2, 2, 2], bid: 1 };
+    let b = Hand { cards: vec![1, 1, 1, 2, 2], bid: 1 };
+    assert_eq!(compare(&a, &b), Ordering::Greater);
+    assert_eq!(compare(&b, &a), Ordering::Less);
+
+    // Five of a kind vs Five of a kind
+    let a = Hand { cards: vec![2, 2, 2, 2, 2], bid: 1 };
+    let b = Hand { cards: vec![1, 1, 1, 1, 2], bid: 1 };
+    assert_eq!(compare(&a, &b), Ordering::Greater);
+    assert_eq!(compare(&b, &a), Ordering::Less);
+
+    // Two pairs vs Thee of a kind
+    let a = Hand { cards: vec![2, 2, 3, 3, 4], bid: 1 };
+    let b = Hand { cards: vec![1, 3, 2, 2, 5], bid: 1 };
+    assert_eq!(compare(&a, &b), Ordering::Less);
+    assert_eq!(compare(&b, &a), Ordering::Greater);
+
+    // Four of a kind vs Four of a kind with joker
+    let a = Hand { cards: vec![2, 2, 2, 2, 3], bid: 1 };
+    let b = Hand { cards: vec![2, 2, 2, 3, 1], bid: 1 };
+    assert_eq!(compare(&a, &b), Ordering::Less);
+    assert_eq!(compare(&b, &a), Ordering::Greater);
+
+    // High card vs Pair with Joker
+    // A hand = [12, 13, 10, 3, 14], B hand = [4, 1, 9, 3, 5]
+    let a = Hand { cards: vec![12, 13, 10, 3, 14], bid: 1 };
+    let b = Hand { cards: vec![4, 1, 9, 3, 5], bid: 1 };
+    assert_eq!(compare(&a, &b), Ordering::Less);
+    assert_eq!(compare(&b, &a), Ordering::Greater);
+    assert_eq!(lame_compare(&a, &b), Ordering::Less);
+    assert_eq!(lame_compare(&b, &a), Ordering::Greater);
+
+    // All jokers vs four of a kind
+    let a = Hand { cards: vec![1, 1, 1, 1, 1], bid: 1 };
+    let b = Hand { cards: vec![13, 13, 13, 3, 13], bid: 1 };
+    assert_eq!(compare(&a, &b), Ordering::Greater);
+    assert_eq!(compare(&b, &a), Ordering::Less);
+
 
     println!("Tests are over")
 }
