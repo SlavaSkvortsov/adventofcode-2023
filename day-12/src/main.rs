@@ -270,13 +270,25 @@ fn part_2() {
                 ).collect();
 
                 let template_sting = template.to_owned();
-                let five_times_template_string = format!("{}?{}?{}?{}?{}", template, template, template, template, template);
+                let mut five_times_template_string = format!("{}?{}?{}?{}?{}", template, template, template, template, template);
                 let mut five_times_numbers = numbers.clone();
                 five_times_numbers.extend(numbers.clone());
                 five_times_numbers.extend(numbers.clone());
                 five_times_numbers.extend(numbers.clone());
                 five_times_numbers.extend(numbers.clone());
 
+
+                let mut replaced = true;
+                while five_times_template_string.find("..").is_some() {
+                    five_times_template_string = five_times_template_string.replace("..", ".").to_owned();
+                }
+
+                if five_times_template_string.starts_with('.') {
+                    five_times_template_string = five_times_template_string[1..].to_owned();
+                }
+                if five_times_template_string.ends_with('.') {
+                    five_times_template_string = five_times_template_string[..five_times_template_string.len() - 1].to_owned();
+                }
                 let tmp_result = better_count_possible_combinations(five_times_template_string, &five_times_numbers);
                 println!("{}: {}", template, tmp_result);
                 result += tmp_result;
