@@ -3,3 +3,6 @@
 name = "hello-world"
 version = "0.0.1"
 authors = [ "Slava Skvortsov" ]
+
+[dependencies]
+regex = "1.10.2"
