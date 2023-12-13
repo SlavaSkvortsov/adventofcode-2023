@@ -165,6 +165,30 @@ fn better_count_possible_combinations(
         }
     }
 
+    let mut end_offset = 0;
+    let mut i = max_unchecked_number_index;
+    while i < numbers.len() - 1 {
+        i += 1;
+        if numbers[i].start.is_none() {
+            end_offset += numbers[i].length + 1;
+        }
+        else { break }
+    }
+    if end < end_offset {
+        return 0;
+    }
+    end -= end_offset;
+
+    let mut start_offset = 0;
+    let mut i = max_unchecked_number_index;
+    while i > 0 {
+        i -= 1;
+        if numbers[i].end.is_none() {
+            start_offset += numbers[i].length + 1;
+        }
+        else { break }
+    }
+
     let max_unchecked_number_str = max_unchecked_number.length.to_string();
 
     let replace_str = match max_unchecked_number_index {
